@@ -57,7 +57,7 @@ def notify(url):
 # /
 
 def main():
-    schedule.every(5).to(30).seconds.do(
+    schedule.every(1).to(5).minutes.do(
         check_stock,
         "https://usa.juliusk9.com/collections/bite-pad/products/julius-k9-cotton-nylon-soft-bite-pad"
     )
