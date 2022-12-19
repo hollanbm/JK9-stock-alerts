@@ -13,6 +13,8 @@ dynaconf = "^3.1.11"
 schedule = "^1.1.0"
 webdriver-manager = "^3.8.5"
 requests = "^2.28.1"
+loguru = "^0.6.0"
+pydantic = "^1.10.2"
 
 
 [build-system]

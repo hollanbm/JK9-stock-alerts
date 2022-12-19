@@ -1,9 +1,10 @@
 # This is a sample Python script.
 import json
-import requests
-import schedule
 import time
 
+import requests
+import schedule
+from loguru import logger
 from selenium import webdriver
 from selenium.webdriver.chrome import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -13,55 +14,57 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 from config import settings
 
-PUSHOVER_API = 'https://api.pushover.net/1/messages.json'
+PUSHOVER_API: str = 'https://api.pushover.net/1/messages.json'
+in_stock: bool = False
 
 
-def check_stock(url):
+def check_stock(url: str):
+    logger.info("checking stock for {item}", item=item_name(url))
     options = Options()
-    options.add_argument("--headless")
+    options.add_argument('--headless')
 
     # needed for docker, since chrome doesn't like being run as root
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
 
     browser = webdriver.WebDriver(service=Service(ChromeDriverManager().install()), options=options)
-
     browser.get(url)
-    in_stock = browser.find_element(By.ID, "AddToCartText-product-template").text != 'SOLD OUT'
+
+    global in_stock
+    in_stock = browser.find_element(By.ID, 'AddToCartText-product-template').text != 'SOLD OUT'
     if in_stock:
+        logger.info("{item} is in stock", item=item_name(url))
         notify(url)
 
 
-def notify(url):
-    data = {
+def notify(url: str):
+    data: dict[str, str | int] = {
         'token': settings.PUSHOVER_API_TOKEN,
         'user': settings.PUSHOVER_USER_TOKEN,
         'title': 'JK9 IN STOCK!',
         'url': url,
-        'message': 'JK9 bite pillow in stock',
-        'priority': '1',
+        'message': item_name(url) + ' is in stock',
+        'priority': '2',
         'expire': ' 10800',  # seconds
         'retry': 30  # seconds
     }
-    headers = {'Content-type': 'application/json', 'Accept': 'application/json'}
+    headers: dict[str, str] = {'Content-type': 'application/json', 'Accept': 'application/json'}
+
     requests.post(PUSHOVER_API, data=json.dumps(data), headers=headers)
+    logger.info("pushover alert sent for {item}", item=item_name(url))
 
 
-# if __name__ == '__main__':
-# check_stock('https://usa.juliusk9.com/collections/bite-pad/products/julius-k9-cotton-nylon-soft-bite-pad')
-# schedule.every(10).seconds.do(
-#     check_stock,
-#     url='https://usa.juliusk9.com/collections/bite-pad/products/julius-k9-cotton-nylon-soft-bite-pad'
-# )
-# See PyCharm help at https://www.jetbrains.com/help/
-# /
+def item_name(url: str):
+    return url.rsplit('/', 1)[1]
+
 
 def main():
-    schedule.every(1).to(5).minutes.do(
+    logger.debug('app startup')
+    schedule.every(1).to(5).seconds.do(
         check_stock,
-        "https://usa.juliusk9.com/collections/bite-pad/products/julius-k9-cotton-nylon-soft-bite-pad"
+        'https://usa.juliusk9.com/collections/bite-pad/products/julius-k9-cotton-nylon-soft-bite-pad'
     )
-    while True:
+    while not in_stock:
         schedule.run_pending()
         time.sleep(1)
 
