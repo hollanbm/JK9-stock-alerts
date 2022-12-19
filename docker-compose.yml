@@ -1,4 +1,7 @@
 version: "3.9"
 services:
-  app:
+  jk9-alerts:
+    container_name: jk9-alerts
+    image: jk9-alerts
     build: .
+    restart: unless-stopped
